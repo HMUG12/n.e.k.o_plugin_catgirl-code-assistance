@@ -60,6 +60,23 @@ python tools/check_plugin.py                                # 没 CLI 时的离�
 > ⚠️ 不要把源码手工复制进用户插件目录（`%LOCALAPPDATA%\N.E.K.O\plugins\<id>\`），
 > 也不要建符号链接 —— 这两条都不属于官方开发流程。
 
+### 安装包结构（官方 `.neko-plugin` 布局）
+
+`dist/*.neko-plugin` 是 zip，内部结构对照官方 `plugin/neko_plugin_cli/core/{build,install,inspect}.py`：
+
+```
+manifest.toml                                    # 包级清单：schema_version / package_type / id / package_name / version / package_description
+metadata.toml                                    # payload 完整性：sha256
+payload/
+├── dependencies.toml                            # 依赖清单（零依赖也必须有）
+├── plugins/catgirl_code_assistance/             # 插件源码（plugin.toml / __init__.py / core / routers / ui / i18n / docs）
+└── profiles/default.toml                        # 默认启用配置
+```
+
+安装器先读包根的 `manifest.toml`；缺失就直接报「缺少包级 manifest.toml」。
+`metadata.toml` 里的 hash 按官方算法计算（payload 下文件按 NFC 归一化的 posix 路径排序，
+逐条 `path + NUL + content + NUL` 进 sha256），`tools/smoke_package.py` 会重算并比对。
+
 ---
 
 ## 能力一览
@@ -125,8 +142,8 @@ python tools/check_plugin.py                                # 没 CLI 时的离�
 ├── tests/                            # 52 个单元测试（含离线 SDK 替身）
 ├── tools/
 │   ├── check_plugin.py               # 离线静态自检（≈ neko-plugin check --strict）
-│   ├── build_plugin.py               # 打包成 .neko-plugin
-│   └── smoke_package.py              # 交付包冒烟测试
+│   ├── build_plugin.py               # 按官方布局打包 .neko-plugin（manifest.toml + payload/）
+│   └── smoke_package.py              # 交付包冒烟：结构 + 清单字段 + payload sha256 + 功能
 ├── .github/workflows/ci.yml          # 云端 CI：自检 + 测试 + 打包 + 冒烟
 ├── config.example.toml               # 用户运行时配置模板
 └── dist/                             # 构建产物（已随仓库发布，方便直接取用）

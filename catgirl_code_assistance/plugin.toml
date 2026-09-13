@@ -14,7 +14,7 @@ keywords = [
     "find symbol", "grep", "search code", "patch", "diff", "undo",
     "local only", "privacy", "offline", "redact",
 ]
-version = "1.0.0"
+version = "1.0.1"
 type = "plugin"
 entry = "plugin.plugins.catgirl_code_assistance:CatgirlCodeAssistancePlugin"
 
@@ -37,8 +37,9 @@ enabled = true
 [plugin.database]
 enabled = true
 
-# 纯标准库实现，没有任何第三方 Python 依赖（本地 / 云端均可免安装运行）
-[plugin.dependencies]
+# 纯标准库实现，没有任何第三方 Python 依赖（本地 / 云端均可免安装运行）。
+# 注意：[plugin].dependencies 官方只接受「插件 ID 字符串列表」，
+# 零依赖时**整段不写**即可（写成空表会被官方 CLI 判为非法格式）。
 
 [plugin.i18n]
 default_locale = "zh-CN"

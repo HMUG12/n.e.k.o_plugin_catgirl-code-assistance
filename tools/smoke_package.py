@@ -1,17 +1,23 @@
-"""交付包冒烟测试 —— 验证「打包出来的东西真的能跑」。
+"""交付包冒烟测试 —— 验证「打包出来的东西真的装得上、跑得起来」。
 
-流程：把 dist/*.neko-plugin 解压到临时目录 → 用 SDK 替身加载入口类 →
-在临时项目里跑一遍核心入口（读 / 大纲 / 审查 / 搜索 / 预览 diff / 落盘 / 撤销）。
+做的四件事（对照官方 install.py / inspect.py 的检查点）：
+  1. 包结构：根目录 manifest.toml / metadata.toml 存在，payload/plugins/<id>/ 存在
+  2. 包级清单字段：package_type / id / version 非空，id 是安全路径段
+  3. payload 完整性：按官方算法重算 sha256，与 metadata.toml 比对
+  4. 功能：解压出插件源码 → 用 SDK 替身加载入口类 → 跑一遍核心入口
 
-用法：python tools/verify_package.py [包路径]
+用法：python tools/smoke_package.py [包路径]
 """
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import importlib.util
-import json
+import re
 import sys
 import tempfile
+import tomllib
+import unicodedata
 import zipfile
 from pathlib import Path
 
@@ -34,6 +40,28 @@ def compute(items):
     return total
 '''
 
+_SAFE_PACKAGE_ID_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+
+
+def read_toml(path: Path) -> dict:
+    return tomllib.loads(path.read_text(encoding="utf-8"))
+
+
+def payload_hash_of(payload_dir: Path) -> str:
+    """官方 compute_payload_hash：按 NFC posix 相对路径排序，path+NUL+content+NUL。"""
+    digest = hashlib.sha256()
+    entries = [
+        (unicodedata.normalize("NFC", path.relative_to(payload_dir).as_posix()), path)
+        for path in payload_dir.rglob("*")
+        if not path.is_dir()
+    ]
+    for relative, path in sorted(entries, key=lambda item: item[0]):
+        digest.update(relative.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
 
 def load_entry_class(source_dir: Path, entry: str):
     module_path, class_name = entry.rsplit(":", 1)
@@ -49,21 +77,51 @@ def load_entry_class(source_dir: Path, entry: str):
 
 async def smoke(package_path: Path) -> int:
     failures: list[str] = []
+
+    def expect(condition: bool, message: str, detail: str = "") -> None:
+        if condition:
+            print(f"  ✓ {message}{('：' + detail) if detail else ''}")
+        else:
+            failures.append(f"{message}（{detail}）")
+
     with tempfile.TemporaryDirectory(prefix="cca-smoke-") as tmp:
         extract_dir = Path(tmp) / "extracted"
         with zipfile.ZipFile(package_path) as archive:
             archive.extractall(extract_dir)
 
-        manifest = json.loads((extract_dir / "manifest.json").read_text(encoding="utf-8"))
-        plugin_id = manifest["id"]
-        print(f"  ✓ 包已解压：{plugin_id} v{manifest['version']}（{len(manifest['files'])} 个文件）")
+        # ── 1. 包结构 ──
+        expect((extract_dir / "manifest.toml").is_file(), "包根目录存在 manifest.toml")
+        expect((extract_dir / "metadata.toml").is_file(), "包根目录存在 metadata.toml")
+        payload_dir = extract_dir / "payload"
+        expect((payload_dir / "dependencies.toml").is_file(), "payload/dependencies.toml 存在")
 
+        # ── 2. 包级清单 ──
+        manifest = read_toml(extract_dir / "manifest.toml")
+        package_id = str(manifest.get("id", ""))
+        package_type = str(manifest.get("package_type", ""))
+        version = str(manifest.get("version", ""))
+        expect(package_type == "plugin", "package_type 合法", package_type)
+        expect(bool(package_id) and bool(_SAFE_PACKAGE_ID_RE.fullmatch(package_id)), "id 是安全包 ID", package_id)
+        expect(bool(version), "version 非空", version)
+
+        plugin_dir = payload_dir / "plugins" / package_id
+        expect(plugin_dir.is_dir(), f"payload/plugins/{package_id}/ 存在")
+        expect((plugin_dir / "plugin.toml").is_file(), "插件源码含 plugin.toml")
+
+        # ── 3. payload 完整性 ──
+        metadata = read_toml(extract_dir / "metadata.toml")
+        expected = str(metadata.get("payload", {}).get("hash", ""))
+        actual = payload_hash_of(payload_dir)
+        expect(bool(expected) and expected == actual, "payload sha256 与 metadata.toml 一致", actual[:16] + "…")
+
+        # ── 4. 功能 ──
         project = Path(tmp) / "project"
         project.mkdir()
         target = project / "core.py"
         target.write_text(SAMPLE, encoding="utf-8")
 
-        cls = load_entry_class(extract_dir, manifest["entry"])
+        entry = str(read_toml(plugin_dir / "plugin.toml").get("plugin", {}).get("entry", ""))
+        cls = load_entry_class(plugin_dir, entry)
         plugin = cls(None)
         plugin.config = FakeConfig(
             {
@@ -76,10 +134,7 @@ async def smoke(package_path: Path) -> int:
         )
 
         started = await plugin.startup()
-        if not started.ok:
-            failures.append(f"startup 失败：{started.error}")
-        print("  ✓ 插件启动")
-
+        expect(started.ok, "插件启动", getattr(started, "error", "") or "ok")
         await plugin._scan_background(force=True)
 
         async def check(label: str, coro, assertion) -> None:
@@ -88,10 +143,7 @@ async def smoke(package_path: Path) -> int:
                 failures.append(f"{label} 返回错误：{result.error}")
                 return
             ok, detail = assertion(result.value)
-            if ok:
-                print(f"  ✓ {label}：{detail}")
-            else:
-                failures.append(f"{label} 断言失败：{detail}")
+            expect(ok, label, detail)
 
         await check(
             "get_workspace_status",
@@ -133,22 +185,18 @@ async def smoke(package_path: Path) -> int:
         )
 
         applied = await plugin.apply_edit(path=str(target), old_text="return total", new_text="return total * 2")
-        if not applied.ok:
-            failures.append(f"apply_edit 失败：{applied.error}")
-        else:
-            print(f"  ✓ apply_edit：替换 {applied.value['replacements']} 处")
+        expect(applied.ok, "apply_edit", getattr(applied, "error", "") or "已落盘")
         undone = await plugin.undo_edit()
-        if not undone.ok or "return total * 2" in target.read_text(encoding="utf-8"):
-            failures.append(f"undo_edit 失败：{undone}")
-        else:
-            print("  ✓ undo_edit：文件已还原")
-
+        expect(
+            undone.ok and "return total * 2" not in target.read_text(encoding="utf-8"),
+            "undo_edit",
+            "文件已还原",
+        )
         await check(
             "remember_note",
             plugin.remember_note(topic="smoke", content="ok"),
             lambda v: (v["saved"] is True, "笔记已写入本地 store"),
         )
-
         await plugin.shutdown()
 
     if failures:
@@ -165,6 +213,9 @@ def main() -> int:
     package = sys.argv[1] if len(sys.argv) > 1 else None
     if package:
         target = Path(package)
+        if not target.is_file():
+            print(f"包不存在：{target}")
+            return 1
     else:
         candidates = sorted((ROOT / "dist").glob("*.neko-plugin"))
         if not candidates:

@@ -1,5 +1,15 @@
 # 更新日志
 
+## 1.0.1
+
+修复安装包无法导入的问题。
+
+- **修复**：`.neko-plugin` 包改为官方布局 —— 包根新增 `manifest.toml`（`schema_version` / `package_type` / `id` / `package_name` / `version` / `package_description`）与 `metadata.toml`（payload sha256），插件源码移到 `payload/plugins/catgirl_code_assistance/`，并补齐 `payload/dependencies.toml`、`payload/profiles/default.toml`。
+  原先「插件文件直接放包根 + `manifest.json`」的猜测式布局不被官方安装器识别（报「缺少包级 manifest.toml」）。
+- **修正**：删除 `plugin.toml` 中的空 `[plugin.dependencies]` 表 —— 官方要求该键只能是「插件 ID 字符串列表」，零依赖时应整段省略。
+- **增强**：`tools/smoke_package.py` 现在会校验包结构、包级清单字段、以及按官方算法重算 payload sha256 与 `metadata.toml` 比对。
+- **增强**：`tools/check_plugin.py` 新增「`[plugin].dependencies` 必须是列表」「禁止 `requirements.txt`」两条检查。
+
 ## 1.0.0
 
 首个正式版本。

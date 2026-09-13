@@ -113,10 +113,18 @@ def check_manifest(report: Report) -> dict:
     if data.get("plugin", {}).get("database", {}).get("enabled") and "plugin.database" not in raw.decode("utf-8-sig"):
         report.warn("疑似缺少 [plugin.database] 声明，self.db 会为 None")
 
-    # 依赖必须内联表格式
-    deps = data.get("plugin", {}).get("dependencies", None)
-    if isinstance(deps, (list, tuple)):
-        report.error("[plugin.dependencies] 必须用内联表格式（key = \">=x.y\"），不能用列表")
+    # 官方 build/dependencies.py：[plugin].dependencies 只能是「插件 ID 字符串列表」
+    deps = plugin.get("dependencies", None)
+    if deps is not None and not isinstance(deps, list):
+        report.error("[plugin].dependencies 必须是插件 ID 字符串列表（零依赖时请整段删除，不要写空表）")
+    if isinstance(deps, list):
+        for item in deps:
+            if not isinstance(item, str) or not item.strip():
+                report.error(f"[plugin].dependencies 只能是插件 ID 字符串：{item!r}")
+
+    # 官方不支持 requirements.txt（依赖要写在 pyproject.toml 并 vendor/）
+    if (PLUGIN_DIR / "requirements.txt").is_file():
+        report.error("插件目录不允许出现 requirements.txt（官方要求依赖走 pyproject.toml + vendor/）")
 
     # UI / 文档资源存在性
     panels = data.get("plugin", {}).get("ui", {}).get("panel", [])
