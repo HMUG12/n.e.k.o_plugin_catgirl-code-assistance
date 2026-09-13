@@ -1,0 +1,31 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+# 注意：dist/ **故意不被忽略** —— 打包产物是交付物之一，需要随仓库发布
+build/
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Test / coverage caches
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

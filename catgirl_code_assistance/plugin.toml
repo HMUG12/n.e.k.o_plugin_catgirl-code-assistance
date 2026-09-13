@@ -1,0 +1,120 @@
+[plugin]
+id = "catgirl_code_assistance"
+name = "猫娘代码协助"
+short_description = "Catgirl Code Assistance: read, explain, review and improve code in your local folders by chat. Privacy-first, local-only."
+description = "把本地项目目录授权给猫娘阅读，然后在聊天里陪你读代码、看结构、查问题、提改进；改动先出 diff 预览，确认后再落盘并支持撤销。支持 Python / C / C++ / Java / JS / TS / Go / Rust 等常见源码。敏感信息在本地打码后才交给模型，插件本身零第三方依赖、零外发网络请求。"
+keywords = [
+    "代码", "源码", "读代码", "看代码", "讲代码", "解释代码", "读懂代码",
+    "代码审查", "代码评审", "审查代码", "重构", "优化代码", "改进代码", "提出改进",
+    "找函数", "找定义", "搜索代码", "查找符号", "全文搜索", "正则搜索",
+    "修改代码", "改代码", "补丁", "diff", "撤销", "回滚",
+    "项目结构", "目录结构", "文件树", "索引", "代码笔记", "项目笔记",
+    "python", "c", "cpp", "java", "javascript", "typescript", "go", "rust",
+    "code", "read code", "explain code", "code review", "refactor", "improve code",
+    "find symbol", "grep", "search code", "patch", "diff", "undo",
+    "local only", "privacy", "offline", "redact",
+]
+version = "1.0.0"
+type = "plugin"
+entry = "plugin.plugins.catgirl_code_assistance:CatgirlCodeAssistancePlugin"
+
+[plugin.author]
+name = "HMUG12"
+url = "https://github.com/HMUG12/n.e.k.o_plugin_catgirl-code-assistance"
+
+[plugin.sdk]
+recommended = ">=0.1.0,<0.2.0"
+supported = ">=0.1.0,<0.3.0"
+
+[plugin_runtime]
+enabled = true
+auto_start = true
+timeout = 20
+
+[plugin.store]
+enabled = true
+
+[plugin.database]
+enabled = true
+
+# 纯标准库实现，没有任何第三方 Python 依赖（本地 / 云端均可免安装运行）
+[plugin.dependencies]
+
+[plugin.i18n]
+default_locale = "zh-CN"
+locales_dir = "i18n"
+
+[plugin.ui]
+enabled = true
+
+[[plugin.ui.panel]]
+id = "settings"
+title = "猫娘代码协助"
+entry = "ui/settings.tsx"
+context = "workspace"
+permissions = ["state:read", "action:call", "config:read"]
+
+[[plugin.ui.guide]]
+id = "guide"
+title = "使用指南"
+entry = "docs/guide.md"
+permissions = ["state:read"]
+
+# ─────────────────────────────────────────────────────────
+# 业务配置段（段名与代码里 self.config.dump()["catgirl_code_assistance"] 对应）
+# ⚠️ 这里只放「安全默认值」，真实路径由用户在设置面板填写，
+#    落在用户数据目录的运行时配置里，不会回写进仓库源码。
+# ─────────────────────────────────────────────────────────
+[catgirl_code_assistance]
+
+# 可读文件夹（绝对路径，每行一个）。默认为空：不授权就什么都读不到。
+readable_roots = []
+
+# 遍历时跳过的目录名（大小写不敏感）
+blocked_dirs = [
+    ".git", ".svn", ".hg", ".idea", ".vscode", ".github",
+    "node_modules", "__pycache__", ".pytest_cache", ".mypy_cache",
+    ".venv", "venv", "env", "dist", "build", "site-packages",
+    "target", ".next", "coverage", ".gradle", ".cache",
+]
+
+# 允许读取的扩展名白名单
+allowed_extensions = [
+    ".py", ".pyi", ".pyx",
+    ".c", ".h", ".cpp", ".hpp", ".cc", ".hh", ".cxx", ".hxx",
+    ".cs", ".java", ".scala", ".kt", ".kts",
+    ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx",
+    ".go", ".rs", ".rb", ".php", ".swift", ".m", ".mm",
+    ".lua", ".pl", ".r", ".sh", ".bash", ".zsh", ".ps1", ".bat",
+    ".sql", ".proto", ".gradle", ".cmake", ".toml", ".yaml", ".yml",
+    ".json", ".ini", ".cfg", ".conf", ".md", ".txt", ".dockerfile",
+]
+
+# 单次读取的大小上限（KB，32–8192）
+max_file_kb = 512
+# 单次搜索最多返回多少条（1–500）
+max_matches = 50
+# 单次返回的最大行数（20–5000）
+max_context_lines = 400
+# 是否跟随符号链接（关闭时，解析后越界的链接会被拒绝）
+follow_symlinks = false
+
+# ── 写权限（总开关 + 逐操作授权，默认全关）──
+enable_write = false
+allow_create = false
+allow_modify = false
+allow_delete = false
+
+# ── 本地脱敏 ──
+# 返回给模型前，把密钥 / Token / 邮箱 / 手机号 / 身份证 / 私钥块替换为 [REDACTED:XXX]
+redact_sensitive = true
+# 追加自定义正则（Python re 语法）
+custom_redact_patterns = []
+
+# ── 索引 ──
+index_enabled = true
+index_limit = 20000
+max_undo_steps = 20
+
+# ── 语气：gentle / professional / tsundere ──
+reply_style = "gentle"

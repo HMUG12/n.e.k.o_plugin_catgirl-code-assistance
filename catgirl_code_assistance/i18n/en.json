@@ -1,0 +1,12 @@
+{
+  "panel.title": "Catgirl Code Assistance",
+  "hint.no_roots": "No readable folder has been authorized yet. Add at least one absolute path in the settings panel",
+  "hint.roots_ready": "{roots} root folder(s) authorized, {files} files indexed",
+  "hint.scan_started": "Index rebuild started; ask me to search or read files once it finishes",
+  "hint.scan_running": "Index rebuild is still running, please wait",
+  "hint.saved": "Configuration applied. Paths outside the readable folders stay unreadable; write access stays off by default",
+  "status.scanning": "Indexing",
+  "status.idle": "Idle",
+  "error.no_roots_for_scan": "No readable folder configured yet. Add an absolute path in the settings panel",
+  "error.empty_pattern": "pattern must not be empty"
+}

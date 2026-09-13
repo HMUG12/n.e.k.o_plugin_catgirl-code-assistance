@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: 自检 + 单元测试 + 打包冒烟（Python ${{ matrix.python-version }}）
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.13"]
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: 静态自检（离线版 neko-plugin check）
+        run: python tools/check_plugin.py
+
+      - name: 单元测试
+        run: python -m unittest discover -s tests -v
+
+      - name: 打包
+        run: python tools/build_plugin.py
+
+      - name: 交付包冒烟测试
+        run: python tools/smoke_package.py
+
+      - name: 上传交付包
+        uses: actions/upload-artifact@v4
+        with:
+          name: catgirl-code-assistance-${{ matrix.os }}-${{ matrix.python-version }}
+          path: |
+            dist/*.neko-plugin
+            dist/*.sha256
+          if-no-files-found: error

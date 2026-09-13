@@ -1,0 +1,12 @@
+{
+  "panel.title": "猫娘代码协助",
+  "hint.no_roots": "还没有授权任何可读文件夹，请先到设置面板填入至少一个绝对路径",
+  "hint.roots_ready": "已授权 {roots} 个根目录，索引 {files} 个文件",
+  "hint.scan_started": "已经开始重建索引，完成后可以直接让我搜索或读文件",
+  "hint.scan_running": "索引正在重建中，稍等一下",
+  "hint.saved": "设置已生效；可读文件夹之外的路径一律不可读，写权限默认关闭",
+  "status.scanning": "索引中",
+  "status.idle": "空闲",
+  "error.no_roots_for_scan": "还没有可读文件夹，先去设置面板填一个绝对路径吧",
+  "error.empty_pattern": "pattern 不能为空"
+}

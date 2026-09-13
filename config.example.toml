@@ -1,0 +1,44 @@
+# ─────────────────────────────────────────────────────────
+# 运行时配置模板 —— 复制到用户数据目录后填写：
+#   Windows：%LOCALAPPDATA%\N.E.K.O\plugins\catgirl_code_assistance\config\plugin.toml
+#   macOS  ：~/Library/Application Support/N.E.K.O/plugins/catgirl_code_assistance/config/plugin.toml
+#   Linux  ：~/.local/share/N.E.K.O/plugins/catgirl_code_assistance/config/plugin.toml
+#
+# ⚠️ 真实路径属于你的隐私，不要提交进任何仓库；这里的文件字段全部留占位值。
+# ─────────────────────────────────────────────────────────
+
+[catgirl_code_assistance]
+
+# 你允许猫娘阅读的项目根目录（绝对路径，每行一个）
+readable_roots = [
+    # "/home/you/projects/my-app",
+    # "/home/you/repos/catgirl-core",
+]
+
+# 建议保持默认的安全值 —— 写权限默认关闭，需要时再打开
+enable_write = false
+allow_create = false
+allow_modify = false
+allow_delete = false
+
+# 脱敏开关（强烈建议保持 true）
+redact_sensitive = true
+
+# 追加你自己的脱敏正则，例如公司内部工号：
+# custom_redact_patterns = ["EMP-\\d{6}"]
+custom_redact_patterns = []
+
+# 单文件读取上限（KB）
+max_file_kb = 512
+# 单次搜索最多返回条数
+max_matches = 50
+# 单次返回最大行数
+max_context_lines = 400
+
+# 索引开关
+index_enabled = true
+index_limit = 20000
+max_undo_steps = 20
+
+# 语气：gentle / professional / tsundere
+reply_style = "gentle"
