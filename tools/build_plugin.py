@@ -253,6 +253,15 @@ def build(version: str | None = None, *, skip_check: bool = False, out_dir: Path
             for arcname, path in sorted(entries, key=lambda item: item[0]):
                 archive.write(path, arcname=arcname)
 
+        # 7. 整包 sha256 校验文件（方便下载后核对；包内完整性以 metadata.toml 为准）
+        archive_digest = hashlib.sha256()
+        with open(target, "rb") as handle:
+            for chunk in iter(lambda: handle.read(65536), b""):
+                archive_digest.update(chunk)
+        (out_dir / f"{target.name}.sha256").write_text(
+            f"{archive_digest.hexdigest()}  {target.name}\n", encoding="utf-8", newline="\n"
+        )
+
         print(f"  ✓ 打包完成：{target.relative_to(ROOT).as_posix()}")
         print(
             f"    插件文件 {len(copied)} 个 · 包内 {len(entries)} 条 · "
